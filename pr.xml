@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config>
+ <server name="MiServidorGuay" ip="127.0.0.1" puerto="4000">
+ </server>
+ <database path="/hosthome/ptavi/ptavi-pfinal/passwords.json" passwdpath="/hosthome/ptavi/ptavi-pfinal/passwords.json">
+ </database>
+ <log path="/hosthome/ptavi/ptavi-pfinal/prlog.txt">
+ </log>
+</config>
+
