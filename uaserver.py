@@ -22,15 +22,15 @@ class UaServer(ContentHandler):
         Método que lee etiquetas y guarda el atributo del documento xml.
         """
         if name == 'log':
-            logpath = attrs.get('path', "")
-            self.log = logpath[logpath.rfind('/')+1:]
+            self.logpath = attrs.get('path', "")
+            self.log = self.logpath[self.logpath.rfind('/')+1:]
         elif name == 'uaserver':
             self.sip = attrs.get('ip', "")
             self.sport = attrs.get('puerto', "")
 
     def Server(self):
         p = uaclient.UaClient()
-        p.Date(('hola'), self.log)
+        p.Date(('hola'), self.logpath)
         print(self.log)
         print(self.sip)
         print(self.sport)
