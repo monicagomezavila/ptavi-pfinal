@@ -5,6 +5,7 @@
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import sys
+import socket
 import socketserver
 import os.path
 import time
@@ -102,11 +103,10 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         ipclient = ipport_client[0]
 
         if METHOD == 'REGISTER' and len(lines) == 2:
-            l_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
-            l_log += (' ') + lines[0].replace('\r\n', ' ')
-            defclient.Date((l_log), self.logpath)
+            ua_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
+            ua_log += (' ') + lines[0].replace('\r\n', ' ')
+            defclient.Date((ua_log), self.logpath)
 
-            defclient.Date((l_log), self.logpath)
             message = 'SIP/2.0 401 Unauthorized\r\n'
             message += 'WWW Authenticated: Digest nonce="898989"\r\n\r\n'
             self.wfile.write(bytes(message, 'utf-8'))
@@ -116,7 +116,12 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             defclient.Date((l_log), self.logpath)
 
         elif METHOD == 'REGISTER' and len(lines) == 3:
+            ua_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
+            ua_log += (' ') + lines[0].replace('\r\n', ' ')
+            defclient.Date((ua_log), self.logpath)
+
             self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+
             l_log = 'Sent to ' + ipclient + (':') + str(ipport_client[1])
             message = "SIP/2.0 200 OK\r\n\r\n"
             l_log += (' ') + message.replace('\r\n', ' ')
@@ -142,11 +147,24 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             uainvited = lines[0][lines[0].rfind(':')+1:]
             uainvited = uainvited[:uainvited.find(' ')]
             message = ""
+
+            ua_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
+            ua_log += (' ') + lines[0].replace('\r\n', ' ')
+            defclient.Date((ua_log), self.logpath)
+
             if uainvited in self.dicc_ua:
-                print('----SE ENVIARÍA AL OTRO USER')
                 for line in lines:
                     message += line
                 message = message + '\r\n'
+
+                # Enviamos lo recibido del uaclient al uainvited
+                ipinvited = self.dicc_ua[uainvited][0]
+                portinvited = self.dicc_ua[uainvited][1]
+                my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                my_socket.connect((ipinvited, int(portinvited)))
+                my_socket.send(bytes(message, 'utf-8') + b'\r\n')
+
             else:
                 message = 'SIP/2.0 404 User Not Found\r\n\r\n'
                 self.wfile.write(bytes(message, 'utf-8'))
