@@ -5,6 +5,7 @@ import uaclient
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import sys
+import socketserver
 
 
 class UaServer(ContentHandler):
@@ -22,28 +23,61 @@ class UaServer(ContentHandler):
         Método que lee etiquetas y guarda el atributo del documento xml.
         """
         if name == 'log':
-            self.logpath = attrs.get('path', "")
-            self.log = self.logpath[self.logpath.rfind('/')+1:]
+            self.log = attrs.get('path', "")
         elif name == 'uaserver':
             self.sip = attrs.get('ip', "")
             self.sport = attrs.get('puerto', "")
 
-    def Server(self):
-        p = uaclient.UaClient()
-        p.Date(('hola'), self.logpath)
-        print(self.log)
-        print(self.sip)
-        print(self.sport)
+    def Return(self):
+        return(self.sip, self.log, self.sport)
 
+class EchoHandler(socketserver.DatagramRequestHandler):
+    
+    def handle(self):
+        parser = make_parser()
+        server = UaServer()
+        parser.setContentHandler(server)
+        dua = sys.argv[1]
+        try:
+            parser.parse(open(dua))
+        except FileNotFoundError:
+             sys.exit('Usage: python uaclient.py config')
+
+        Ldata = server.Return()
+        self.log = Ldata[1]
+        self.sport = Ldata[2]
+        self.sip = Ldata[0]
+
+        lines =[]
+        for line in self.rfile:
+
+            if not line or line.decode('utf-8') != '\r\n':
+                line = line.decode('utf-8')
+                print(line)
+                lines.append(line)
 
 if __name__ == "__main__":
 
     parser = make_parser()
     server = UaServer()
     parser.setContentHandler(server)
-    duser = sys.argv[1]
     try:
-        parser.parse(open(duser))
+        dproxy = sys.argv[1]
+    except IndexError:
+        sys.exit('Usage: python uaserver.py config')
+    try:
+        parser.parse(open(dproxy))
     except FileNotFoundError:
-        sys.exit('Usage: python uaclient.py config method option')
-    server.Server()
+        sys.exit('Usage: python uaserver.py config')
+
+    Data = server.Return()
+    IP = repr(Data[0])
+    IP = IP[:IP.rfind("'")]
+    IP = IP[IP.find("'")+1:]
+    PORT = Data[2]
+    serv = socketserver.UDPServer((IP, int(PORT)), EchoHandler)
+    print("Listening...")
+    try:
+        serv.serve_forever()
+    except KeyboardInterrupt:
+        print("Finalizado servidor")
