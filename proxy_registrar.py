@@ -77,8 +77,8 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         parser.setContentHandler(cts)
         dproxy = sys.argv[1]
         parser.parse(open(dproxy))
-
         Ldata = cts.PrReg()
+
         self.prip = Ldata[0]
         self.prport = Ldata[1]
         self.logpath = Ldata[3]
@@ -88,6 +88,7 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         self.UserCaducado()
         defclient = uaclient.UaClient()
         lines = []
+
         for line in self.rfile:
 
             if not line or line.decode('utf-8') != '\r\n':
@@ -95,7 +96,7 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
                 print(line)
                 lines.append(line)
 
-        # Si el metodo es REGISTER hay dos opciones para responder
+        # Si el metodo es REGISTER hay dos opciones // nonce
         METHOD = (lines[0][:lines[0].find(' ')])
         ipport_client = list(self.client_address)
         ipclient = ipport_client[0]
