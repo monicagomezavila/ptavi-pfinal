@@ -8,7 +8,6 @@ import os
 import os.path
 import time
 import socket
-import shutil
 
 
 class UaClient(ContentHandler):
@@ -23,12 +22,9 @@ class UaClient(ContentHandler):
         self.prport = ""
         self.uaname = ""
         self.sport = ""
-        self.rtpip = ""
         self.logpath = ""
         self.sip = ""
         self.uapasswd = ""
-        self.log = ""
-        self.logpath = ""
 
     def startElement(self, name, attrs):
         """
@@ -47,7 +43,6 @@ class UaClient(ContentHandler):
             self.rtpport = attrs.get('puerto', "")
         elif name == 'log':
             self.logpath = attrs.get('path', "")
-            self.log = self.logpath[self.logpath.rfind('/')+1:]
 
     def Date(self, line, path):
         """
@@ -78,17 +73,18 @@ class UaClient(ContentHandler):
             line += 'Expires: ' + sys.argv[3] + '\r\n\r\n'
         elif sys.argv[2] == 'INVITE':
             line = 'INVITE sip:' + sys.argv[3] + ' SIP/2.0\r\n'
-            line += 'Content-Type: application/sdp' + '\r\n'
+            line += 'Content-Type: application/sdp' + '\r\n\r\n'
             line += 'v=0\r\n' + 'o=' + self.uaname + ' ' + self.sip + '\r\n'
             line += 's=misesion\r\n' + 't=0\r\n'
-            line += 'm=audio ' + self.rtpport + ' RTP\r\n'
+            line += 'm=audio ' + self.rtpport + ' RTP\r\n\r\n'
         elif sys.argv[2] == 'BYE':
-            line = 'BYE sip:' + sys.argv[3] + ' SIP/2.0\r\n'
+            line = 'BYE sip:' + sys.argv[3] + ' SIP/2.0\r\n\r\n'
         else:
-            print('Usage: python uaclient.py config method option')
+            sys.exit('Usage: python uaclient.py config method option')
 
         l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
         l_log += line[:line.rfind('\r\n\r\n')]
+        l_log = l_log.replace('\r\n', ' ')
         UaClient().Date(l_log, self.logpath)
 
         """
@@ -97,13 +93,19 @@ class UaClient(ContentHandler):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             my_socket.connect((str(self.prip), int(self.prport)))
             my_socket.send(bytes(line, 'utf-8') + b'\r\n')
-
-            data = my_socket.recv(1024)
-            print(data.decode('utf-8'))
+            try:
+                data = my_socket.recv(1024)
+                print(data.decode('utf-8'))
+            except ConnectionRefusedError:
+                error = 'Error: No server listening at ' + self.prip
+                error = error + ' port ' + self.prport
+                UaClient().Date(error, self.logpath)
+                sys.exit(error)
 
             l_log = 'Reviced from ' + self.prip + ':' + self.prport + (': ')
             recived = data.decode('utf-8')
             l_log += recived[:recived.rfind('\r\n\r\n')]
+            l_log = l_log.replace('\r\n', ' ')
             UaClient().Date(l_log, self.logpath)
 
             message_proxy = (data.decode('utf-8').split())
@@ -117,15 +119,25 @@ class UaClient(ContentHandler):
 
                 l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
                 l_log += line[:line.rfind('\r\n\r\n')]
+                l_log = l_log.replace('\r\n', ' ')
                 UaClient().Date(l_log, self.logpath)
 
                 data = my_socket.recv(1024)
-                print(data.decode('utf-8'))
+                data = data.decode('utf-8')
+                print(data)
                 l_log = 'Reviced from ' + self.prip + ':' + self.prport
-                recived = data.decode('utf-8')
-                l_log += (': ') + recived[:recived.rfind('\r\n\r\n')] 
+                l_log += (': ') + data.replace('\r\n', ' ')
                 UaClient().Date(l_log, self.logpath)
 
+            if ('Trying' and 'Ringing'and 'OK') in message_proxy:
+                origin = message_proxy[12][message_proxy[12].find('=')+1:]
+                line = 'ACK sip:' + origin + (' SIP/2.0\r\n\r\n')
+                my_socket.send(bytes(line, 'utf-8') + b'\r\n')
+
+                l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
+                l_log += line[:line.rfind('\r\n\r\n')]
+                l_log = l_log.replace('\r\n', ' ')
+                UaClient().Date(l_log, self.logpath)
 
 if __name__ == "__main__":
     """
@@ -141,5 +153,4 @@ if __name__ == "__main__":
         parser.parse(open(duser))
     except FileNotFoundError:
         sys.exit('Usage: python uaclient.py config method option')
-
     client.Method()
