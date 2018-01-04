@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config>
+ <account username="penny@bigbang.org" passwd="loveleonardbutsh">
+ </account>
+ <uaserver ip="127.0.0.1" puerto="2500"></uaserver>
+ <rtpaudio puerto="32523"></rtpaudio>
+ <regproxy ip="127.0.0.1" puerto="4000"></regproxy>
+ <log path="/home/monica/ptavi/ptavi-pfinal/log2.txt"></log>
+ <audio path="/home/monica/ptavi/ptavi-pfinal/cancion.mp3"></audio>
+</config>
