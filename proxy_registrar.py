@@ -212,6 +212,26 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             l_log += (' ') + lines[0].replace('\r\n', ' ')
             defclient.Date((l_log), self.logpath)
 
+        elif METHOD == 'BYE':
+            cname = cname[:cname.rfind(' ')]
+            if cname in self.dicc_ua:
+                ipbye = self.dicc_ua[cname][0]
+                portbye = self.dicc_ua[cname][1]
+
+                my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                my_socket.connect((ipbye, int(portbye)))
+                my_socket.send(bytes(resend, 'utf-8') + b'\r\n')
+
+                data = my_socket.recv(int(portbye))
+                data = data.decode('utf-8')
+                print(data)
+                self.wfile.write(bytes(data, 'utf-8'))
+
+            else:
+                message = 'SIP/2.0 404 User Not Found\r\n\r\n'
+                self.wfile.write(bytes(message, 'utf-8'))
+
         self.UsersJson()
 
 if __name__ == "__main__":
