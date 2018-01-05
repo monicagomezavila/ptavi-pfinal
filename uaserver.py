@@ -42,7 +42,6 @@ class UaServer(ContentHandler):
         elif name == 'audio':
             self.f_audio = attrs.get('path', "")
 
-
     def Return(self):
         return(self.sip, self.log, self.sport, self.uaname, self.rtpport,
                self.prip, self.prport, self.f_audio)
@@ -125,11 +124,23 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 ip = valor
 
             f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
-            #defclient.SendRTP(ip, port, f_audio)
+            # defclient.SendRTP(ip, port, f_audio)
+
+            l_log = 'Sent to ' + ip + (':') + port + (' ')
+            l_log += "RTP"
+            defclient.Date((l_log), self.log)
 
         elif 'BYE' in lines[0]:
+            p_log = 'Received from ' + self.prip + (':') + str(self.prport)
+            p_log += (' ') + lines[0].replace('\r\n', ' ')
+            defclient.Date((p_log), self.log)
+
             line = "SIP/2.0 200 OK\r\n\r\n"
             self.wfile.write(bytes(line, 'utf-8'))
+
+            l_log = 'Sent to ' + self.prip + (':') + self.prport + (' ')
+            l_log += line.replace('\r\n', ' ')
+            defclient.Date((l_log), self.log)
 
 if __name__ == "__main__":
 
