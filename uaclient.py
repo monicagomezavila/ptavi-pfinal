@@ -25,6 +25,7 @@ class UaClient(ContentHandler):
         self.logpath = ""
         self.sip = ""
         self.uapasswd = ""
+        self.f_audio = ""
 
     def startElement(self, name, attrs):
         """
@@ -43,6 +44,8 @@ class UaClient(ContentHandler):
             self.rtpport = attrs.get('puerto', "")
         elif name == 'log':
             self.logpath = attrs.get('path', "")
+        elif name == 'audio':
+            self.f_audio = attrs.get('path', "")
 
     def Date(self, line, path):
         """
@@ -58,10 +61,21 @@ class UaClient(ContentHandler):
             with open(path, 'a') as outfile:
                 outfile.write(date)
 
+    def SendRTP(self, ipsend, portsend, f_audio):
+        """
+        Función a la que se llamará cuando se quiera enviar rtp
+        (client/server)
+        """
+        a_Eje = "./mp32rtp -i " + ipsend + " -p " + portsend
+        a_Eje += " < " + f_audio
+        print("Vamos a ejecutar", a_Eje)
+        os.system(a_Eje)
+
     def Method(self):
         """
         Parte de cliente. Se registra, manda invite, bye.
         """
+
         if len(sys.argv) != 4:
             sys.exit('Usage: python uaclient.py config method option')
 
@@ -92,7 +106,7 @@ class UaClient(ContentHandler):
         """
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             my_socket.connect((str(self.prip), int(self.prport)))
-            my_socket.send(bytes(line, 'utf-8') + b'\r\n')
+            my_socket.send(bytes(line, 'utf-8'))
             try:
                 data = my_socket.recv(1024)
                 print(data.decode('utf-8'))
@@ -114,8 +128,8 @@ class UaClient(ContentHandler):
                 line += self.sport + ' SIP/2.0\r\n'
                 line += 'Expires: ' + sys.argv[3] + '\r\n'
                 line += 'Authorization: Digest response="'
-                line += self.uapasswd + ('"\r\n')
-                my_socket.send(bytes(line, 'utf-8') + b'\r\n')
+                line += self.uapasswd + ('"') + ('\r\n\r\n')
+                my_socket.send(bytes(line, 'utf-8'))
 
                 l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
                 l_log += line[:line.rfind('\r\n\r\n')]
@@ -129,15 +143,21 @@ class UaClient(ContentHandler):
                 l_log += (': ') + data.replace('\r\n', ' ')
                 UaClient().Date(l_log, self.logpath)
 
-            if ('Trying' and 'Ringing'and 'OK') in message_proxy:
+            if 'Trying' and 'Ringing' in message_proxy:
                 origin = message_proxy[12][message_proxy[12].find('=')+1:]
                 line = 'ACK sip:' + origin + (' SIP/2.0\r\n\r\n')
-                my_socket.send(bytes(line, 'utf-8') + b'\r\n')
+                my_socket.send(bytes(line, 'utf-8'))
 
                 l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
                 l_log += line[:line.rfind('\r\n\r\n')]
                 l_log = l_log.replace('\r\n', ' ')
                 UaClient().Date(l_log, self.logpath)
+
+                ipinvited = message_proxy[13]
+                portinvited = message_proxy[17]
+
+                f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
+                #UaClient().SendRTP(ipinvited, portinvited, f_audio)
 
 if __name__ == "__main__":
     """
