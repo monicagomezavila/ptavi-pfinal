@@ -6,6 +6,8 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import sys
 import socketserver
+import os
+import json
 
 
 class UaServer(ContentHandler):
@@ -19,6 +21,7 @@ class UaServer(ContentHandler):
         self.sip = ""
         self.uaname = ""
         self.rtpport = ""
+        self.f_audio = ""
 
     def startElement(self, name, attrs):
         """
@@ -36,10 +39,13 @@ class UaServer(ContentHandler):
         elif name == 'regproxy':
             self.prip = attrs.get('ip', "")
             self.prport = attrs.get('puerto', "")
+        elif name == 'audio':
+            self.f_audio = attrs.get('path', "")
+
 
     def Return(self):
         return(self.sip, self.log, self.sport, self.uaname, self.rtpport,
-               self.prip, self.prport)
+               self.prip, self.prport, self.f_audio)
 
 
 class EchoHandler(socketserver.DatagramRequestHandler):
@@ -63,6 +69,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
         self.rtpport = Ldata[4]
         self.prip = Ldata[5]
         self.prport = Ldata[6]
+        self.f_audio = Ldata[7]
 
         lines = []
         for line in self.rfile:
@@ -74,17 +81,18 @@ class EchoHandler(socketserver.DatagramRequestHandler):
 
         if 'INVITE'in lines[0]:
 
+            data = []
             p_log = 'Received from ' + self.prip + (':') + str(self.prport)
             p_log += (' ') + lines[0].replace('\r\n', ' ')
             defclient.Date((p_log), self.log)
 
-            line = "SIP/2.0 100 Trying\r\n\r\n"
-            line += "SIP/2.0 180 Ringing\r\n\r\n"
+            self.wfile.write(b"SIP/2.0 100 Trying\r\n\r\n")
+            self.wfile.write(b"SIP/2.0 180 Ringing\r\n\r\n")
 
-            line += "SIP/2.0 200 OK\r\n"
+            line = "SIP/2.0 200 OK\r\n"
             line += 'Content-Type: application/sdp' + '\r\n\r\n'
             line += 'v=0\r\n' + 'o=' + self.uaname + ' ' + self.sip + '\r\n'
-            line += 's=misesion\r\n' + 't=0\r\n'
+            line += 's=hola\r\n' + 't=0\r\n'
             line += 'm=audio ' + self.rtpport + ' RTP\r\n\r\n'
             self.wfile.write(bytes(line, 'utf-8'))
 
@@ -93,10 +101,35 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             l_log += line.replace('\r\n', ' ')
             defclient.Date((l_log), self.log)
 
-        if 'ACK' in lines[0]:
+            ipclient = lines[3][lines[3].rfind(' ')+1:]
+            ipclient = ipclient[:ipclient.rfind('\r\n')]
+            portclient = lines[6][lines[6].find(' ')+1:]
+            portclient = portclient[:portclient.rfind(' ')]
+            data = {}
+            data[portclient] = ipclient
+
+            with open('invited.json', 'w') as outfile:
+                json.dump(data, outfile, separators=(',', ':'), indent="")
+
+        elif 'ACK' in lines[0]:
             p_log = 'Received from ' + self.prip + (':') + str(self.prport)
             p_log += (' ') + lines[0].replace('\r\n', ' ')
             defclient.Date((p_log), self.log)
+
+            if os.path.exists('invited.json'):
+                with open('invited.json') as data_file:
+                    data = json.load(data_file)
+
+            for clave, valor in data.items():
+                port = clave
+                ip = valor
+
+            f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
+            #defclient.SendRTP(ip, port, f_audio)
+
+        elif 'BYE' in lines[0]:
+            line = "SIP/2.0 200 OK\r\n\r\n"
+            self.wfile.write(bytes(line, 'utf-8'))
 
 if __name__ == "__main__":
 
