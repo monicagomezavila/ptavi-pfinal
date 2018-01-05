@@ -75,11 +75,10 @@ class UaClient(ContentHandler):
         """
         Parte de cliente. Se registra, manda invite, bye.
         """
+        UaClient().Date('Starting...', self.logpath)
 
         if len(sys.argv) != 4:
             sys.exit('Usage: python uaclient.py config method option')
-
-        UaClient().Date('Starting...', self.logpath)
 
         if sys.argv[2] == 'REGISTER':
             line = 'REGISTER sip:' + self.uaname + ':'
@@ -93,6 +92,8 @@ class UaClient(ContentHandler):
             line += 'm=audio ' + self.rtpport + ' RTP\r\n\r\n'
         elif sys.argv[2] == 'BYE':
             line = 'BYE sip:' + sys.argv[3] + ' SIP/2.0\r\n\r\n'
+            l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
+
         else:
             sys.exit('Usage: python uaclient.py config method option')
 
@@ -114,6 +115,7 @@ class UaClient(ContentHandler):
                 error = 'Error: No server listening at ' + self.prip
                 error = error + ' port ' + self.prport
                 UaClient().Date(error, self.logpath)
+                UaClient().Date('Finishing...', self.logpath)
                 sys.exit(error)
 
             l_log = 'Reviced from ' + self.prip + ':' + self.prport + (': ')
@@ -142,6 +144,7 @@ class UaClient(ContentHandler):
                 l_log = 'Reviced from ' + self.prip + ':' + self.prport
                 l_log += (': ') + data.replace('\r\n', ' ')
                 UaClient().Date(l_log, self.logpath)
+                UaClient().Date('Finishing...', self.logpath)
 
             if 'Trying' and 'Ringing' in message_proxy:
                 origin = message_proxy[12][message_proxy[12].find('=')+1:]
@@ -157,7 +160,17 @@ class UaClient(ContentHandler):
                 portinvited = message_proxy[17]
 
                 f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
-                #UaClient().SendRTP(ipinvited, portinvited, f_audio)
+                # UaClient().SendRTP(ipinvited, portinvited, f_audio)
+                l_log = 'Sent to ' + ipinvited + ':' + portinvited + (': ')
+                l_log += 'RTP'
+                UaClient().Date(l_log, self.logpath)
+
+            if 'OK' in message_proxy:
+                UaClient().Date('Finishing...', self.logpath)
+
+            if '404' in message_proxy:
+                UaClient().Date('Finishing...', self.logpath)
+
 
 if __name__ == "__main__":
     """
