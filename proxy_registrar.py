@@ -81,6 +81,8 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         Ldata = cts.PrReg()
 
         self.prip = Ldata[0]
+        if self.prip == '':
+            self.prip = '127.0.0.1'
         self.prport = Ldata[1]
         self.logpath = Ldata[3]
 
@@ -103,11 +105,18 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         METHOD = (lines[0][:lines[0].find(' ')])
         ipport_client = list(self.client_address)
         ipclient = ipport_client[0]
-        lenn = len(lines)
+        lnn = len(lines)
         cname = lines[0][lines[0].find(':')+1:]
         cname = cname[:cname.find(':')]
 
-        if METHOD == 'REGISTER' and (cname not in self.dicc_ua) and lenn == 2:
+        ok = METHOD.upper() + ' sip:' + cname + ':'
+        ok += portclient + ' SIP/2.0\r\n'
+
+        if lines[0] != ok:
+            message = 'SIP/2.0 400 Bad Request\r\n\r\n'
+            self.wfile.write(bytes(message, 'utf-8'))
+
+        elif METHOD == 'REGISTER' and (cname not in self.dicc_ua) and lnn == 2:
 
             u_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
             u_log += (' ') + lines[0].replace('\r\n', ' ')
@@ -214,6 +223,11 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
 
         elif METHOD == 'BYE':
             cname = cname[:cname.rfind(' ')]
+
+            u_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
+            u_log += (' ') + lines[0].replace('\r\n', ' ')
+            defclient.Date((u_log), self.logpath)
+
             if cname in self.dicc_ua:
                 ipbye = self.dicc_ua[cname][0]
                 portbye = self.dicc_ua[cname][1]
@@ -228,9 +242,15 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
                 print(data)
                 self.wfile.write(bytes(data, 'utf-8'))
 
+                l_log = 'Sent to ' + ipbye + (':') + str(portbye)
+                l_log += (' ') + lines[0].replace('\r\n', ' ')
+                defclient.Date((l_log), self.logpath)
+
             else:
                 message = 'SIP/2.0 404 User Not Found\r\n\r\n'
                 self.wfile.write(bytes(message, 'utf-8'))
+        else:
+            message = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
 
         self.UsersJson()
 
