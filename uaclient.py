@@ -77,6 +77,9 @@ class UaClient(ContentHandler):
         """
         UaClient().Date('Starting...', self.logpath)
 
+        if self.sip == '':
+            self.sip = '127.0.0.1'
+
         if len(sys.argv) != 4:
             sys.exit('Usage: python uaclient.py config method option')
 
@@ -146,7 +149,7 @@ class UaClient(ContentHandler):
                 UaClient().Date(l_log, self.logpath)
                 UaClient().Date('Finishing...', self.logpath)
 
-            if 'Trying' and 'Ringing' in message_proxy:
+            elif 'Trying' and 'Ringing' in message_proxy:
                 origin = message_proxy[12][message_proxy[12].find('=')+1:]
                 line = 'ACK sip:' + origin + (' SIP/2.0\r\n\r\n')
                 my_socket.send(bytes(line, 'utf-8'))
@@ -160,15 +163,22 @@ class UaClient(ContentHandler):
                 portinvited = message_proxy[17]
 
                 f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
-                # UaClient().SendRTP(ipinvited, portinvited, f_audio)
+                # ENVIO RTP
+                UaClient().SendRTP(ipinvited, portinvited, f_audio)
                 l_log = 'Sent to ' + ipinvited + ':' + portinvited + (': ')
                 l_log += 'RTP'
                 UaClient().Date(l_log, self.logpath)
 
-            if 'OK' in message_proxy:
+            elif 'OK' in message_proxy:
+                l_log = 'Reviced from ' + self.prip + ':' + self.prport
+                l_log += (': ') + data.replace('\r\n', ' ')
+                UaClient().Date(l_log, self.logpath)
                 UaClient().Date('Finishing...', self.logpath)
 
-            if '404' in message_proxy:
+            elif '404' in message_proxy:
+                l_log = 'Reviced from ' + self.prip + ':' + self.prport
+                l_log += (': ') + data.replace('\r\n', ' ')
+                UaClient().Date(l_log, self.logpath)
                 UaClient().Date('Finishing...', self.logpath)
 
 
