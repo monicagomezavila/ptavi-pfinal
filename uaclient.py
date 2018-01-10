@@ -8,6 +8,7 @@ import os
 import os.path
 import time
 import socket
+from random import randint
 
 
 class UaClient(ContentHandler):
@@ -133,7 +134,7 @@ class UaClient(ContentHandler):
                 line += self.sport + ' SIP/2.0\r\n'
                 line += 'Expires: ' + sys.argv[3] + '\r\n'
                 line += 'Authorization: Digest response="'
-                line += self.uapasswd + ('"') + ('\r\n\r\n')
+                line += str(randint(0, 999999999999999)) + ('"') + ('\r\n\r\n')
                 my_socket.send(bytes(line, 'utf-8'))
 
                 l_log = 'Sent to ' + self.prip + ':' + self.prport + (': ')
@@ -168,17 +169,12 @@ class UaClient(ContentHandler):
                 l_log = 'Sent to ' + ipinvited + ':' + portinvited + (': ')
                 l_log += 'RTP'
                 UaClient().Date(l_log, self.logpath)
+                UaClient().Date('Finishing...', self.logpath)
 
             elif 'OK' in message_proxy:
-                l_log = 'Reviced from ' + self.prip + ':' + self.prport
-                l_log += (': ') + data.replace('\r\n', ' ')
-                UaClient().Date(l_log, self.logpath)
                 UaClient().Date('Finishing...', self.logpath)
 
             elif '404' in message_proxy:
-                l_log = 'Reviced from ' + self.prip + ':' + self.prport
-                l_log += (': ') + data.replace('\r\n', ' ')
-                UaClient().Date(l_log, self.logpath)
                 UaClient().Date('Finishing...', self.logpath)
 
 
