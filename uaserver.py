@@ -64,6 +64,8 @@ class EchoHandler(socketserver.DatagramRequestHandler):
         self.log = Ldata[1]
         self.sport = Ldata[2]
         self.sip = Ldata[0]
+        if self.sip == '':
+            self.sip = '127.0.0.1'
         self.uaname = Ldata[3]
         self.rtpport = Ldata[4]
         self.prip = Ldata[5]
@@ -124,7 +126,8 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 ip = valor
 
             f_audio = self.f_audio[self.f_audio.rfind('/')+1:]
-            # defclient.SendRTP(ip, port, f_audio)
+            # ENVIO RTP
+            defclient.SendRTP(ip, port, f_audio)
 
             l_log = 'Sent to ' + ip + (':') + port + (' ')
             l_log += "RTP"
@@ -141,6 +144,10 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             l_log = 'Sent to ' + self.prip + (':') + self.prport + (' ')
             l_log += line.replace('\r\n', ' ')
             defclient.Date((l_log), self.log)
+
+        else:
+            line = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
+            self.wfile.write(bytes(line, 'utf-8'))
 
 if __name__ == "__main__":
 
