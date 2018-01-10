@@ -47,8 +47,6 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             with open('passwds.json') as data_file:
                 data = json.load(data_file)
             self.dicc_ua = data
-        else:
-            self.dicc_ua = {}
 
     def UsersJson(self, fichjson='passwds.json'):
         """
@@ -62,9 +60,10 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         while n <= len(self.dicc_ua):
             for user in self.dicc_ua:
                 now = time.time()
-                if self.dicc_ua[user][3] <= now:
-                    del self.dicc_ua[user]
-                    break
+                if len(self.dicc_ua[user]) > 1:
+                    if self.dicc_ua[user][4] <= now:
+                        del(self.dicc_ua[user][1:])
+                        break
             n = n+1
 
     def handle(self):
@@ -108,15 +107,19 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         lnn = len(lines)
         cname = lines[0][lines[0].find(':')+1:]
         cname = cname[:cname.find(':')]
+        sport = lines[0][lines[0].rfind(':')+1:]
+        sport = sport[:sport.rfind(' ')+1]
+        ok = ''
 
-        ok = METHOD.upper() + ' sip:' + cname + ':'
-        ok += portclient + ' SIP/2.0\r\n'
+        if cname in self.dicc_ua and METHOD == 'REGISTER':
+            ok = METHOD.upper() + ' sip:' + cname + ':'
+            ok += sport + 'SIP/2.0\r\n'
 
-        if lines[0] != ok:
+        if lines[0] != ok and cname in self.dicc_ua:
             message = 'SIP/2.0 400 Bad Request\r\n\r\n'
             self.wfile.write(bytes(message, 'utf-8'))
 
-        elif METHOD == 'REGISTER' and (cname not in self.dicc_ua) and lnn == 2:
+        if METHOD == 'REGISTER' and lnn == 2 and len(self.dicc_ua[cname]) == 1:
 
             u_log = 'Received from ' + ipclient + (':') + str(ipport_client[1])
             u_log += (' ') + lines[0].replace('\r\n', ' ')
@@ -152,11 +155,12 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
 
             # Mira el valor de expires y en funcion de el hace
             if int(expiresua) > 0:
-                list_ua = [ipclient, sport, timeinsec, expirationua]
+                passwd = self.dicc_ua[cname][0]
+                list_ua = [passwd, ipclient, sport, timeinsec, expirationua]
                 self.dicc_ua[cname] = list_ua
             elif int(expiresua) == 0:
                 if cname in self.dicc_ua:
-                    del self.dicc_ua[cname]
+                    del(self.dicc_ua[cname][1:])
 
         elif METHOD == 'INVITE':
             uainvited = lines[0][lines[0].rfind(':')+1:]
@@ -166,11 +170,11 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             u_log += (' ') + lines[0].replace('\r\n', ' ')
             defclient.Date((u_log), self.logpath)
 
-            if uainvited in self.dicc_ua:
+            if len(self.dicc_ua[uainvited]) > 1:
 
                 # Enviamos lo recibido del uaclient al uainvited
-                ipinvited = self.dicc_ua[uainvited][0]
-                portinvited = self.dicc_ua[uainvited][1]
+                ipinvited = self.dicc_ua[uainvited][1]
+                portinvited = self.dicc_ua[uainvited][2]
 
                 my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -205,8 +209,8 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
         elif METHOD == 'ACK':
             uainvited = lines[0][lines[0].rfind(':')+1:]
             uainvited = uainvited[:uainvited.find(' ')]
-            ipinvited = self.dicc_ua[uainvited][0]
-            portinvited = self.dicc_ua[uainvited][1]
+            ipinvited = self.dicc_ua[uainvited][1]
+            portinvited = self.dicc_ua[uainvited][2]
 
             my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -228,22 +232,30 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             u_log += (' ') + lines[0].replace('\r\n', ' ')
             defclient.Date((u_log), self.logpath)
 
-            if cname in self.dicc_ua:
-                ipbye = self.dicc_ua[cname][0]
-                portbye = self.dicc_ua[cname][1]
+            if len(self.dicc_ua[cname]) > 1:
+                ipbye = self.dicc_ua[cname][1]
+                portbye = self.dicc_ua[cname][2]
 
                 my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 my_socket.connect((ipbye, int(portbye)))
                 my_socket.send(bytes(resend, 'utf-8') + b'\r\n')
 
+                l_log = 'Sent to ' + ipbye + (':') + str(portbye)
+                l_log += (' ') + lines[0].replace('\r\n', ' ')
+                defclient.Date((l_log), self.logpath)
+
                 data = my_socket.recv(int(portbye))
                 data = data.decode('utf-8')
                 print(data)
                 self.wfile.write(bytes(data, 'utf-8'))
 
-                l_log = 'Sent to ' + ipbye + (':') + str(portbye)
-                l_log += (' ') + lines[0].replace('\r\n', ' ')
+                u_log = 'Received from ' + ipbye + (':')
+                u_log += str(portbye) + (' ') + data.replace('\r\n', ' ')
+                defclient.Date((u_log), self.logpath)
+
+                l_log = 'Sent to ' + ipclient + (':') + str(ipport_client[1])
+                l_log += (' ') + data.replace('\r\n', ' ')
                 defclient.Date((l_log), self.logpath)
 
             else:
