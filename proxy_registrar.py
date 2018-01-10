@@ -11,6 +11,7 @@ import os.path
 import time
 import json
 import uaclient
+from random import randint
 
 
 class Constants(ContentHandler):
@@ -126,7 +127,8 @@ class Proxy_Registrar(socketserver.DatagramRequestHandler):
             defclient.Date((u_log), self.logpath)
 
             message = 'SIP/2.0 401 Unauthorized\r\n'
-            message += 'WWW Authenticated: Digest nonce="898989"\r\n\r\n'
+            message += 'WWW Authenticated: Digest nonce="'
+            message += str(randint(0, 999999999999999)) + '"\r\n\r\n'
             self.wfile.write(bytes(message, 'utf-8'))
 
             l_log = 'Sent to ' + ipclient + (':') + str(ipport_client[1])
